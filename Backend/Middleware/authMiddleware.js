@@ -13,7 +13,17 @@ const protect = async (req, resizeBy, next) =>{
             token = req.headers.authorization.split(" ")[1];
             const decoded= jwt.verify(token, process.env.JWT_SECRET);
 
-            
-    }catch (error) {}
+            req.user = await User.findById(decoded.id).select("-password");
+            next();
+    }catch (error) {
+        console.error("token verification failed", error);
+        resizeBy.status(401).json({ message: "Not authorized, token failed" });
+    }
 }
+else {
+    res.status(401).json({ message: "Not authorized, no token" });
 }
+
+}
+
+module.exports = { protect };
