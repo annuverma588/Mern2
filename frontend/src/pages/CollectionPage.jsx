@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { FaFilter } from "react-icons/fa";
 import FilterSidebar from "../components/Products/FilterSidebar";
+import ShortOptions from "../components/Products/ShortOptions";
 
 const CollectionPage = () => {
   const [products, setProducts] = useState([]);
@@ -54,6 +55,54 @@ const CollectionPage = () => {
           price: 180,
           image: [{ url: "https://picsum.photos/500/500?random=4" }],
         },
+        {
+          id: 5,
+          name: "Product 5",
+          price: 100,
+          image: [{ url: "https://picsum.photos/500/500?random=5" }],
+        },
+        {
+          id: 6,
+          name: "Product 6",
+          price: 120,
+          image: [{ url: "https://picsum.photos/500/500?random=6" }],
+        },
+        {
+          id: 7,
+          name: "Product 7",
+          price: 150,
+          image: [{ url: "https://picsum.photos/500/500?random=7" }],
+        },
+        {
+          id: 8,
+          name: "Product 8",
+          price: 180,
+          image: [{ url: "https://picsum.photos/500/500?random=8" }],
+        },
+        {
+          id: 9,
+          name: "Product 9",
+          price: 100,
+          image: [{ url: "https://picsum.photos/500/500?random=9" }],
+        },
+        {
+          id: 10,
+          name: "Product 10",
+          price: 120,
+          image: [{ url: "https://picsum.photos/500/500?random=10" }],
+        },
+        {
+          id: 11,
+          name: "Product 11",
+          price: 150,
+          image: [{ url: "https://picsum.photos/500/500?random=11" }],
+        },
+        {
+          id: 12,
+          name: "Product 12",
+          price: 180,
+          image: [{ url: "https://picsum.photos/500/500?random=12" }],
+        },
       ];
       setProducts(fetchedProducts);
     }, 1000);
@@ -91,7 +140,9 @@ const CollectionPage = () => {
 
       {/* Products Section */}
       <div className="flex-1 p-4">
-        <h2 className="text-2xl font-semibold mb-4">Collections</h2>
+        <h2 className="text-2xl font-semibold mb-4"> All Collections</h2>
+
+        <ShortOptions />
 
         {products.length === 0 ? (
           <p>Loading products...</p>
