@@ -88,7 +88,7 @@ const productSchema = new mongoose.Schema({
     metaDescription: {
         type: String,
     },
-    metakeywords: {
+    metaKeywords: {
         type:String,
     },
 
