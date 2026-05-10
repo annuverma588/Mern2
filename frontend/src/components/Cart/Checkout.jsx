@@ -1,87 +1,131 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PayPalButton from "./PayPalButton";
+import { orderApi, paymentApi } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
-const cart = {
-  products: [
-    {
-      name: "Style Jacket",
-      size: "M",
-      color: "Black",
-      price: 100,
-      image: [{ url: "https://picsum.photos/500/500?random=1" }],
-    },
-    {
-      name: "Denim Shirt",
-      size: "L",
-      color: "Blue",
-      price: 200,
-      image: [{ url: "https://picsum.photos/500/500?random=2" }],
-    },
-    {
-      name: "Casual T-Shirt",
-      size: "S",
-      color: "White",
-      price: 400,
-      image: [{ url: "https://picsum.photos/500/500?random=3" }],
-    },
-    {
-      name: "Hoodie Sweatshirt",
-      size: "XL",
-      color: "Grey",
-      price: 520,
-      image: [{ url: "https://picsum.photos/500/500?random=4" }],
-    },
-  ],
-  totalPrice: 1220,
-};
+const readCart = () => JSON.parse(localStorage.getItem("cart") || "[]");
 
 const Checkout = () => {
   const navigate = useNavigate();
-  
-  const [checkoutId, setCheckoutId] = useState(null); // simple unique ID for demo
-
+  const { user } = useAuth();
+  const [cartItems, setCartItems] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("COD");
   const [shippingAddress, setShippingAddress] = useState({
-    firstname: "",
-    lastname: "",
+    firstName: "",
+    lastName: "",
     address: "",
     city: "",
-    postalcode: "",
+    postalCode: "",
     country: "",
     phone: "",
   });
 
-  // ✅ reusable change handler
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setShippingAddress((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  useEffect(() => {
+    setCartItems(readCart());
+  }, []);
+
+  const totalPrice = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setShippingAddress((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateCheckout = (e) => {
-    e.preventDefault();
+  const loadRazorpay = () =>
+    new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
 
-    // simple validation
-    if (!shippingAddress.firstname || !shippingAddress.lastname) {
-      alert("Please fill all required fields");
-      return;
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+
+  const startPayment = async (order) => {
+    const paymentData = await paymentApi.createOrder(order._id);
+
+    if (paymentData.demo) {
+      await paymentApi.verify({
+        orderId: order._id,
+        demo: true,
+        razorpay_order_id: paymentData.paymentOrder.id,
+        razorpay_payment_id: `demo_pay_${Date.now()}`,
+        razorpay_signature: "demo",
+      });
+      return true;
     }
 
-    console.log("Order Placed", shippingAddress);
-    navigate("/success");
+    const scriptLoaded = await loadRazorpay();
+    if (!scriptLoaded) {
+      throw new Error("Unable to load Razorpay checkout");
+    }
+
+    return new Promise((resolve, reject) => {
+      const checkout = new window.Razorpay({
+        key: paymentData.key,
+        amount: paymentData.paymentOrder.amount,
+        currency: paymentData.paymentOrder.currency,
+        name: "Rabbit",
+        description: `Order ${order._id}`,
+        order_id: paymentData.paymentOrder.id,
+        handler: async (response) => {
+          try {
+            await paymentApi.verify({ orderId: order._id, ...response });
+            resolve(true);
+          } catch (err) {
+            reject(err);
+          }
+        },
+        modal: {
+          ondismiss: () => reject(new Error("Payment cancelled")),
+        },
+      });
+
+      checkout.open();
+    });
   };
-  const handelPaymentSuccess = (details) => {
-    console.log("Payment Success", details);
-    navigate("/order-confirmation");
+
+  const handleCreateCheckout = async (event) => {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const data = await orderApi.create({
+        orderItems: cartItems,
+        shippingAddress,
+        paymentMethod: paymentMethod === "RAZORPAY" ? "Razorpay" : "Cash on Delivery",
+      });
+
+      if (paymentMethod === "RAZORPAY") {
+        await startPayment(data.order);
+      }
+
+      localStorage.removeItem("cart");
+      navigate(`/order/${data.order._id}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 max-w-7xl mx-auto gap-8 py-10 px-6">
-      
-      {/* LEFT */}
-      <div className="bg-white rounded-lg p-6 shadow">
-        <h2 className="text-2xl uppercase mb-6">Checkout</h2>
+    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-6 py-10 lg:grid-cols-2">
+      <div className="rounded-lg bg-white p-6 shadow">
+        <h2 className="mb-6 text-2xl uppercase">Checkout</h2>
+
+        {error && (
+          <p className="mb-4 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
 
         <form onSubmit={handleCreateCheckout}>
           <div className="mb-4">
@@ -89,32 +133,31 @@ const Checkout = () => {
             <input
               id="email"
               type="email"
-              value="priya@gmail.com"
-              className="w-full p-2 border rounded"
+              value={user?.email || ""}
+              className="w-full rounded border p-2"
               disabled
             />
           </div>
 
-          <h3 className="text-lg mb-4">Delivery</h3>
+          <h3 className="mb-4 text-lg">Delivery</h3>
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="mb-4 grid grid-cols-2 gap-4">
             <input
-              name="firstname"
+              name="firstName"
               type="text"
               placeholder="First Name"
-              value={shippingAddress.firstname}
+              value={shippingAddress.firstName}
               onChange={handleChange}
-              className="p-2 border rounded"
+              className="rounded border p-2"
               required
             />
-
             <input
-              name="lastname"
+              name="lastName"
               type="text"
               placeholder="Last Name"
-              value={shippingAddress.lastname}
+              value={shippingAddress.lastName}
               onChange={handleChange}
-              className="p-2 border rounded"
+              className="rounded border p-2"
               required
             />
           </div>
@@ -125,27 +168,28 @@ const Checkout = () => {
             placeholder="Address"
             value={shippingAddress.address}
             onChange={handleChange}
-            className="w-full p-2 border rounded mb-4"
+            className="mb-4 w-full rounded border p-2"
             required
           />
 
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="mb-4 grid grid-cols-2 gap-4">
             <input
               name="city"
               type="text"
               placeholder="City"
               value={shippingAddress.city}
               onChange={handleChange}
-              className="p-2 border rounded"
+              className="rounded border p-2"
+              required
             />
-
             <input
-              name="postalcode"
+              name="postalCode"
               type="text"
               placeholder="Postal Code"
-              value={shippingAddress.postalcode}
+              value={shippingAddress.postalCode}
               onChange={handleChange}
-              className="p-2 border rounded"
+              className="rounded border p-2"
+              required
             />
           </div>
 
@@ -155,7 +199,8 @@ const Checkout = () => {
             placeholder="Country"
             value={shippingAddress.country}
             onChange={handleChange}
-            className="w-full p-2 border rounded mb-4"
+            className="mb-4 w-full rounded border p-2"
+            required
           />
 
           <input
@@ -164,57 +209,72 @@ const Checkout = () => {
             placeholder="Phone"
             value={shippingAddress.phone}
             onChange={handleChange}
-            className="w-full p-2 border rounded mb-4"
+            className="mb-4 w-full rounded border p-2"
             required
           />
-            <div className="mt-6">
-              {!checkoutId ? (
-                <button type="submit"
-                 className="w-full bg-black text-white py-3 rounded hover:bg-gray-800"
-                >Continue to payment</button>
-              ):(
-                <div>
-                  <h3 className="text-lg mb-4 ">Pay with Paypal</h3>
-                  <PayPalButton amount={100} onSucess={handelPaymentSuccess} 
-                  onError={(err)=> alert("payment failed . Try again.")}/>
-                </div>
-                )}
+
+          <div className="mb-4">
+            <label className="mb-2 block">Payment Method</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="COD"
+                  checked={paymentMethod === "COD"}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                />
+                Cash on Delivery
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="RAZORPAY"
+                  checked={paymentMethod === "RAZORPAY"}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
+                />
+                Razorpay
+              </label>
             </div>
-          {/* <button
+          </div>
+
+          <button
             type="submit"
-            className="w-full bg-black text-white py-3 rounded hover:bg-gray-800"
+            disabled={loading || cartItems.length === 0}
+            className="w-full rounded bg-black py-3 text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Place Order
-          </button> */}
+            {loading ? "Processing..." : paymentMethod === "RAZORPAY" ? "Pay and Place Order" : "Place Order"}
+          </button>
         </form>
       </div>
 
-      {/* RIGHT */}
-      <div className="bg-gray-100 p-6 rounded-lg shadow">
-        <h2 className="text-xl mb-4">Order Summary</h2>
+      <div className="rounded-lg bg-gray-100 p-6 shadow">
+        <h2 className="mb-4 text-xl">Order Summary</h2>
 
-        {cart.products.map((item, index) => (
-          <div key={index} className="flex items-center gap-4 mb-4">
-            <img
-              src={item.image[0].url}
-              alt={item.name}
-              className="w-16 h-16 object-cover rounded"
-            />
-            <div>
-              <h4>{item.name}</h4>
-              <p className="text-sm text-gray-500">
-                {item.size} / {item.color}
-              </p>
-              <p>${item.price}</p>
+        {cartItems.length === 0 ? (
+          <p className="text-gray-500">Your cart is empty.</p>
+        ) : (
+          cartItems.map((item, index) => (
+            <div key={`${item.product}-${index}`} className="mb-4 flex items-center gap-4">
+              <img
+                src={item.image}
+                alt={item.name}
+                className="h-16 w-16 rounded object-cover"
+              />
+              <div>
+                <h4>{item.name}</h4>
+                <p className="text-sm text-gray-500">
+                  {item.size} / {item.color} x {item.quantity}
+                </p>
+                <p>Rs. {(item.price * item.quantity).toFixed(2)}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
 
         <hr className="my-4" />
-
-        <h3 className="text-lg font-bold">
-          Total: ${cart.totalPrice}
-        </h3>
+        <h3 className="text-lg font-bold">Total: Rs. {totalPrice.toFixed(2)}</h3>
       </div>
     </div>
   );

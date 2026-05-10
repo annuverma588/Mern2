@@ -1,175 +1,154 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { FaFilter } from "react-icons/fa";
 import FilterSidebar from "../components/Products/FilterSidebar";
 import ShortOptions from "../components/Products/ShortOptions";
+import { productApi } from "../services/api";
 
 const CollectionPage = () => {
+  const { collection } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const sidebarRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    setIsSidebarOpen((open) => !open);
   };
 
-  // 👉 Close sidebar on outside click
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (sidebarRef.current && !sidebarRef.current.contains(e.target)) {
+    const handleClickOutside = (event) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target)) {
         setIsSidebarOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 👉 Fake API data
   useEffect(() => {
-    setTimeout(() => {
-      const fetchedProducts = [
-        {
-          id: 1,
-          name: "Product 1",
-          price: 100,
-          image: [{ url: "https://picsum.photos/500/500?random=1" }],
-        },
-        {
-          id: 2,
-          name: "Product 2",
-          price: 120,
-          image: [{ url: "https://picsum.photos/500/500?random=2" }],
-        },
-        {
-          id: 3,
-          name: "Product 3",
-          price: 150,
-          image: [{ url: "https://picsum.photos/500/500?random=3" }],
-        },
-        {
-          id: 4,
-          name: "Product 4",
-          price: 180,
-          image: [{ url: "https://picsum.photos/500/500?random=4" }],
-        },
-        {
-          id: 5,
-          name: "Product 5",
-          price: 100,
-          image: [{ url: "https://picsum.photos/500/500?random=5" }],
-        },
-        {
-          id: 6,
-          name: "Product 6",
-          price: 120,
-          image: [{ url: "https://picsum.photos/500/500?random=6" }],
-        },
-        {
-          id: 7,
-          name: "Product 7",
-          price: 150,
-          image: [{ url: "https://picsum.photos/500/500?random=7" }],
-        },
-        {
-          id: 8,
-          name: "Product 8",
-          price: 180,
-          image: [{ url: "https://picsum.photos/500/500?random=8" }],
-        },
-        {
-          id: 9,
-          name: "Product 9",
-          price: 100,
-          image: [{ url: "https://picsum.photos/500/500?random=9" }],
-        },
-        {
-          id: 10,
-          name: "Product 10",
-          price: 120,
-          image: [{ url: "https://picsum.photos/500/500?random=10" }],
-        },
-        {
-          id: 11,
-          name: "Product 11",
-          price: 150,
-          image: [{ url: "https://picsum.photos/500/500?random=11" }],
-        },
-        {
-          id: 12,
-          name: "Product 12",
-          price: 180,
-          image: [{ url: "https://picsum.photos/500/500?random=12" }],
-        },
-      ];
-      setProducts(fetchedProducts);
-    }, 1000);
-  }, []);
+    const loadProducts = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const params = new URLSearchParams(searchParams);
+        if (collection && collection !== "all") params.set("collection", collection);
+        if (!params.get("limit")) params.set("limit", "8");
+        const data = await productApi.list(`?${params.toString()}`);
+        setProducts(data.products || []);
+        setPagination({
+          page: data.page || 1,
+          pages: data.pages || 1,
+          total: data.total || 0,
+        });
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [collection, searchParams]);
+
+  const goToPage = (page) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(page));
+    setSearchParams(params);
+  };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen">
-      
-      {/* Mobile Filter Button */}
+    <div className="flex min-h-screen flex-col lg:flex-row">
       <button
         onClick={toggleSidebar}
-        className="lg:hidden border p-2 flex justify-center items-center m-2 rounded"
+        className="m-2 flex items-center justify-center rounded border p-2 lg:hidden"
       >
         <FaFilter className="mr-2" />
         Filters
       </button>
 
-      {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className={`fixed top-0 left-0 h-full w-64 bg-white z-50 shadow-lg transform transition-transform duration-300 
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} 
-        lg:static lg:translate-x-0`}
+        className={`fixed left-0 top-0 z-50 h-full w-64 transform bg-white shadow-lg transition-transform duration-300 lg:static lg:translate-x-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         <FilterSidebar />
       </div>
 
-      {/* Overlay (mobile) */}
       {isSidebarOpen && (
-        <div
+        <button
+          aria-label="Close filters"
           onClick={toggleSidebar}
           className="fixed inset-0 bg-black bg-opacity-40 lg:hidden"
-        ></div>
+        />
       )}
 
-      {/* Products Section */}
       <div className="flex-1 p-4">
-        <h2 className="text-2xl font-semibold mb-4"> All Collections</h2>
-
+        <h2 className="mb-4 text-2xl font-semibold">All Collections</h2>
         <ShortOptions />
 
-        {products.length === 0 ? (
+        {loading ? (
           <p>Loading products...</p>
+        ) : error ? (
+          <p className="text-red-600">{error}</p>
+        ) : products.length === 0 ? (
+          <p>No products found.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map((product) => (
-              <div
-                key={product.id}
-                className="border rounded-lg overflow-hidden shadow hover:shadow-lg transition"
-              >
-                <img
-                  src={product.image[0].url}
-                  alt={product.name}
-                  className="w-full h-40 object-cover"
-                />
+          <>
+            <p className="mb-3 text-sm text-gray-500">
+              {pagination.total} products found
+            </p>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {products.map((product) => (
+                <Link
+                  key={product._id}
+                  to={`/product/${product._id}`}
+                  className="overflow-hidden rounded-lg border shadow transition hover:shadow-lg"
+                >
+                  <img
+                    src={product.images?.[0]?.url}
+                    alt={product.name}
+                    className="h-40 w-full object-cover"
+                  />
 
-                <div className="p-3">
-                  <h3 className="font-medium">{product.name}</h3>
-                  <p className="text-gray-600">₹{product.price}</p>
+                  <div className="p-3">
+                    <h3 className="font-medium">{product.name}</h3>
+                    <p className="text-gray-600">Rs. {product.price}</p>
+                    <span className="mt-2 block w-full rounded bg-black py-1 text-center text-white hover:bg-gray-800">
+                      View Details
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
 
-                  <button className="mt-2 w-full bg-black text-white py-1 rounded hover:bg-gray-800">
-                    Add to Cart
-                  </button>
-                </div>
+            {pagination.pages > 1 && (
+              <div className="mt-6 flex justify-center gap-2">
+                {Array.from({ length: pagination.pages }, (_, index) => index + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => goToPage(page)}
+                      className={`rounded border px-3 py-1 ${
+                        pagination.page === page
+                          ? "bg-black text-white"
+                          : "bg-white text-black"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

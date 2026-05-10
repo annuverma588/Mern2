@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import WishlistPage from "./pages/WishlistPage";
 import CollectionPage from "./pages/CollectionPage";
 import MyOrdersPage from "./pages/MyOrdersPage";
 import ProductDetails from "./components/Products/ProductDetails";
@@ -15,6 +16,7 @@ import Success from "./pages/Success";
 import OrderConfimationPage from "./pages/OrderConfimationPage";
 import OrderDetailsPage from "./pages/OrderDetailsPage";
 import OrderManagement from "./components/Admin/OrderManagement";
+import ProtectedRoute from "./components/Common/ProtectedRoute";
 
 // Admin
 import AdminLayout from "./components/Admin/AdminLayout";
@@ -34,25 +36,30 @@ const App = () => {
 
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
-          <Route path="profile" element={<Profile />} />
-
           <Route path="collections/:collection" element={<CollectionPage />} />
-          <Route path="orders" element={<MyOrdersPage />} />
           <Route path="product/:id" element={<ProductDetails />} />
+          <Route path="products/:id" element={<ProductDetails />} />
 
-          <Route path="checkout" element={<Checkout />} />
           <Route path="order-confirmation" element={<OrderConfimationPage />} />
-          <Route path="order/:id" element={<OrderDetailsPage />} />
-          <Route path="my-orders" element={<MyOrdersPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="profile" element={<Profile />} />
+            <Route path="wishlist" element={<WishlistPage />} />
+            <Route path="orders" element={<MyOrdersPage />} />
+            <Route path="checkout" element={<Checkout />} />
+            <Route path="order/:id" element={<OrderDetailsPage />} />
+            <Route path="my-orders" element={<MyOrdersPage />} />
+          </Route>
         </Route>
 
         {/* ================= ADMIN ROUTES ================= */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminHomePage />} />
-          <Route path="users" element={<UserManagement />} />
-          <Route path="products" element={<ProductManagement />} />
-          <Route path="products/:id/edit" element={<EditProductPage />} />
-          <Route path="orders" element={<OrderManagement />} />
+        <Route element={<ProtectedRoute adminOnly />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminHomePage />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="products" element={<ProductManagement />} />
+            <Route path="products/:id/edit" element={<EditProductPage />} />
+            <Route path="orders" element={<OrderManagement />} />
+          </Route>
         </Route>
 
         {/* ================= EXTRA ================= */}

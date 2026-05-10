@@ -1,30 +1,27 @@
-import React from 'react'
 import { Link } from "react-router-dom";
 
 const ProductGrid = ({ products = [] }) => {
   return (
-    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6'>
-      {products.map((product , index) => (
-        <Link key={index} to={`/products/${product._id}`} className="block">
-          <div className='bg-white p-4 rounded-lg'>
-            <div className='w-full h-96 mb-4'>
-              
-                <img 
-                  src={product.image[0].url}
-                  alt={product.image[0].altText || "product.name"}
-                  className='w-full h-full object-cover rounded-lg'
-                />
-           
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {products.map((product) => (
+        <Link key={product._id} to={`/product/${product._id}`} className="block">
+          <div className="rounded-lg bg-white p-4">
+            <div className="mb-4 h-96 w-full">
+              <img
+                src={product.images?.[0]?.url || product.image?.[0]?.url}
+                alt={product.images?.[0]?.alt || product.name}
+                className="h-full w-full rounded-lg object-cover"
+              />
             </div>
-            <h3 className='text-sm mb-2'>{product.name}</h3>
-            <p className='text-gray-500 font-medium text-sm tracking-tighter'>
-              ${product.price}
+            <h3 className="mb-2 text-sm">{product.name}</h3>
+            <p className="text-sm font-medium text-gray-500">
+              Rs. {Number(product.discountPrice || product.price).toFixed(2)}
             </p>
           </div>
         </Link>
       ))}
     </div>
-  )
-}
+  );
+};
 
-export default ProductGrid
+export default ProductGrid;

@@ -1,16 +1,36 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import RegisterImage from "../assets/Register.webp"; // same image use kar sakte ho
+import { Link, useNavigate } from "react-router-dom";
+import RegisterImage from "../assets/register.webp";
+import { useAuth } from "../context/AuthContext";
 
 const Register = () => {
+  const navigate = useNavigate();
+  const { register } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
  
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Registering user:", { name, email, password, confirmPassword });
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await register({ name, email, password });
+      navigate("/profile", { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
   return (
     <div className="flex min-h-screen">
@@ -34,6 +54,12 @@ const Register = () => {
             Fill in the details to register
           </p>
 
+          {error && (
+            <p className="mb-4 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+
           {/* Name */}
           <div className="mb-4">
             <label className="block text-sm font-semibold mb-2">
@@ -45,6 +71,7 @@ const Register = () => {
               onChange={(e) => setName(e.target.value)}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="Enter your name"
+              required
             />
           </div>
 
@@ -59,6 +86,7 @@ const Register = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="Enter your email"
+              required
             />
           </div>
 
@@ -73,6 +101,8 @@ const Register = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="Enter password"
+              required
+              minLength={6}
             />
           </div>
 
@@ -87,6 +117,8 @@ const Register = () => {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="Confirm password"
+              required
+              minLength={6}
             />
           </div>
 
@@ -95,7 +127,7 @@ const Register = () => {
             type="submit"
             className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition"
           >
-            Register
+            {loading ? "Creating account..." : "Register"}
           </button>
 
           <p className="mt-6 text-center text-sm">

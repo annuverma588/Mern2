@@ -61,6 +61,24 @@ const protect = async (req, res, next) => {
   }
 };
 
+const optionalProtect = async (req, res, next) => {
+  try {
+    if (
+      !req.headers.authorization ||
+      !req.headers.authorization.startsWith("Bearer ")
+    ) {
+      return next();
+    }
+
+    const token = req.headers.authorization.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.id);
+    return next();
+  } catch (error) {
+    return next();
+  }
+};
+
 const admin = (req, res, next) => {
   if (req.user && req.user.role === "admin") {
     return next();
@@ -72,4 +90,4 @@ const admin = (req, res, next) => {
   });
 };
 
-module.exports = { protect, admin };
+module.exports = { protect, optionalProtect, admin };

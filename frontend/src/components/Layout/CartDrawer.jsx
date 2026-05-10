@@ -1,45 +1,78 @@
-import React from 'react'
+import { useEffect, useState } from "react";
 import { IoMdClose } from "react-icons/io";
-import CartContents from '../Cart/CartContents';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
+import CartContents from "../Cart/CartContents";
+
+const readCart = () => JSON.parse(localStorage.getItem("cart") || "[]");
 
 const CartDrawer = ({ drawerOpen, toggleCartDrawer }) => {
-    const navigate = useNavigate();
- const handelCheckout = () => {
-    toggleCartDrawer(); // Close the drawer
-     navigate("/checkout");
- }
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    if (drawerOpen) setItems(readCart());
+  }, [drawerOpen]);
+
+  const persist = (nextItems) => {
+    localStorage.setItem("cart", JSON.stringify(nextItems));
+    setItems(nextItems);
+  };
+
+  const handleChangeQuantity = (index, quantity) => {
+    if (quantity < 1) return;
+    const nextItems = items.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, quantity } : item
+    );
+    persist(nextItems);
+  };
+
+  const handleRemove = (index) => {
+    persist(items.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const handleCheckout = () => {
+    toggleCartDrawer();
+    navigate("/checkout");
+  };
+
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className={`fixed top-0 right-0 w-3/4 sm:w-1/2 md:w-[30rem] h-full bg-white shadow-lg
-        transition-transform duration-300 flex flex-col z-50 ${
-            drawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-        
-        {/* close button */}
-        <div className='flex justify-end p-4'>
-            <button onClick={toggleCartDrawer}>
-                <IoMdClose className='h-6 w-6 text-gray-600'/>
-            </button>
-        </div>
+    <div
+      className={`fixed right-0 top-0 z-50 flex h-full w-3/4 flex-col bg-white shadow-lg transition-transform duration-300 sm:w-1/2 md:w-[30rem] ${
+        drawerOpen ? "translate-x-0" : "translate-x-full"
+      }`}
+    >
+      <div className="flex justify-end p-4">
+        <button type="button" onClick={toggleCartDrawer}>
+          <IoMdClose className="h-6 w-6 text-gray-600" />
+        </button>
+      </div>
 
-        {/* Cart Content with scrollable area*/}
-        <div className=" flex-grow overflow-y-auto p-4">
-            <h2 className="text-xl font-semibold mb-4">Your Cart</h2>
-          <CartContents />
-        </div>
+      <div className="flex-grow overflow-y-auto p-4">
+        <h2 className="mb-4 text-xl font-semibold">Your Cart</h2>
+        <CartContents
+          items={items}
+          onChangeQuantity={handleChangeQuantity}
+          onRemove={handleRemove}
+        />
+      </div>
 
-            {/*Checkout button fixed at the bottom */}
-            <div className='p-4 bg-white sticky bottom-0'>
-                <button onClick={handelCheckout} className='w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800
-                transition'>
-                    Checkout</button>
-                <p className='text-sm tracking-tighter text-gray-500 mt-2 text-center'>
-                    Shipping, taxes, and discounts codes calculated at checkout.
-                </p>
-            </div>
+      <div className="sticky bottom-0 bg-white p-4">
+        <button
+          type="button"
+          onClick={handleCheckout}
+          disabled={totalItems === 0}
+          className="w-full rounded-lg bg-black py-3 font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-400"
+        >
+          Checkout
+        </button>
+        <p className="mt-2 text-center text-sm text-gray-500">
+          Shipping, taxes, and discounts are calculated at checkout.
+        </p>
+      </div>
     </div>
-  )
-}
+  );
+};
 
 export default CartDrawer;

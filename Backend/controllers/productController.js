@@ -65,6 +65,7 @@ const getProducts = async (req, res, next) => {
       material,
       brand,
       limit,
+      page,
     } = req.query;
 
     const query = {};
@@ -95,13 +96,21 @@ const getProducts = async (req, res, next) => {
     if (sortBy === "priceDesc") sort = { price: -1 };
     if (sortBy === "rating") sort = { rating: -1 };
 
+    const pageSize = Math.min(Number(limit) || 20, 100);
+    const currentPage = Math.max(Number(page) || 1, 1);
+    const count = await Product.countDocuments(query);
+
     const products = await Product.find(query)
       .sort(sort)
-      .limit(Math.min(Number(limit) || 20, 100));
+      .skip(pageSize * (currentPage - 1))
+      .limit(pageSize);
 
     return res.status(200).json({
       success: true,
       count: products.length,
+      total: count,
+      page: currentPage,
+      pages: Math.ceil(count / pageSize) || 1,
       products,
     });
   } catch (error) {
@@ -263,6 +272,58 @@ const deleteProduct = async (req, res, next) => {
   }
 };
 
+const createProductReview = async (req, res, next) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product id",
+      });
+    }
+
+    const { rating, comment } = req.body;
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    const alreadyReviewed = product.reviews.find(
+      (review) => String(review.user) === String(req.user._id)
+    );
+
+    if (alreadyReviewed) {
+      alreadyReviewed.rating = Number(rating);
+      alreadyReviewed.comment = comment;
+    } else {
+      product.reviews.push({
+        user: req.user._id,
+        name: req.user.name,
+        rating: Number(rating),
+        comment,
+      });
+    }
+
+    product.numReviews = product.reviews.length;
+    product.rating =
+      product.reviews.reduce((sum, review) => sum + review.rating, 0) /
+      product.reviews.length;
+
+    await product.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Review saved successfully",
+      product,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createProduct,
   getProducts,
@@ -272,4 +333,5 @@ module.exports = {
   getSimilarProducts,
   updateProduct,
   deleteProduct,
+  createProductReview,
 };

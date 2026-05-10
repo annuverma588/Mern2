@@ -1,14 +1,32 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import LoginImage from "../assets/login.webp";
+import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login user:", {  email, password });
+    setError("");
+    setLoading(true);
+
+    try {
+      const auth = await login({ email, password });
+      const destination =
+        location.state?.from?.pathname || (auth.user.role === "admin" ? "/admin" : "/profile");
+      navigate(destination, { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -33,6 +51,12 @@ const Login = () => {
             Enter your username and password to login
           </p>
 
+          {error && (
+            <p className="mb-4 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+
           {/* Email */}
           <div className="mb-4">
             <label className="block text-sm font-semibold mb-2">
@@ -44,6 +68,7 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="Enter your email address"
+              required
             />
           </div>
 
@@ -58,6 +83,7 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-black"
               placeholder="Enter your password"
+              required
             />
           </div>
 
@@ -66,7 +92,7 @@ const Login = () => {
             type="submit"
             className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition"
           >
-            Sign In
+            {loading ? "Signing in..." : "Sign In"}
           </button>
 
           <p className="mt-6 text-center text-sm">

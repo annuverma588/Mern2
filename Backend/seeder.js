@@ -4,6 +4,8 @@ const connectDB = require("./config/db");
 const User = require("./models/User");
 const Product = require("./models/product");
 const Cart = require("./models/Carts");
+const Order = require("./models/Order");
+const Wishlist = require("./models/Wishlist");
 const users = require("./data/users");
 const products = require("./data/products");
 
@@ -14,6 +16,8 @@ const importData = async () => {
     await connectDB();
 
     await Cart.deleteMany();
+    await Order.deleteMany();
+    await Wishlist.deleteMany();
     await Product.deleteMany();
     await User.deleteMany();
 
@@ -40,6 +44,8 @@ const destroyData = async () => {
     await connectDB();
 
     await Cart.deleteMany();
+    await Order.deleteMany();
+    await Wishlist.deleteMany();
     await Product.deleteMany();
     await User.deleteMany();
 

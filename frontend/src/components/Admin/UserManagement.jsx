@@ -1,73 +1,75 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
+import { userApi } from "../../services/api";
 
 const UserManagement = () => {
-  const [users, setUsers] = useState([
-    {
-      name: "John Doe",
-      email: "john@example.com",
-      role: "Customer",
-    },
-  ]);
-
+  const [users, setUsers] = useState([]);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    role: "Customer",
+    role: "user",
   });
 
-  const [showPopup, setShowPopup] = useState(false);
-  const [deleteIndex, setDeleteIndex] = useState(null);
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!formData.name || !formData.email || !formData.password) {
-      alert("Please fill all fields");
-      return;
+  const loadUsers = async () => {
+    try {
+      const data = await userApi.list();
+      setUsers(data.users || []);
+    } catch (err) {
+      setError(err.message);
     }
-
-    const newUser = {
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-    };
-
-    setUsers([...users, newUser]);
-
-    setFormData({
-      name: "",
-      email: "",
-      password: "",
-      role: "Customer",
-    });
   };
 
-  const handleDeleteClick = (index) => {
-    setDeleteIndex(index);
-    setShowPopup(true);
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleChange = (event) => {
+    setFormData({ ...formData, [event.target.name]: event.target.value });
   };
 
-  const confirmDelete = () => {
-    const updatedUsers = users.filter((_, i) => i !== deleteIndex);
-    setUsers(updatedUsers);
-    setShowPopup(false);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+
+    try {
+      const data = await userApi.create(formData);
+      setUsers((current) => [data.user, ...current]);
+      setFormData({ name: "", email: "", password: "", role: "user" });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleRoleChange = async (user, role) => {
+    try {
+      const data = await userApi.update(user.id, { role });
+      setUsers((current) =>
+        current.map((item) => (item.id === user.id ? data.user : item))
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDelete = async (user) => {
+    if (!window.confirm(`Delete ${user.name}?`)) return;
+
+    try {
+      await userApi.remove(user.id);
+      setUsers((current) => current.filter((item) => item.id !== user.id));
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-4">User Management</h2>
+    <div className="mx-auto max-w-7xl p-6">
+      <h2 className="mb-4 text-2xl font-bold">User Management</h2>
+      {error && <p className="mb-4 text-red-600">{error}</p>}
 
-      {/* Form */}
-      <div className="bg-white shadow p-6 rounded-lg mb-6">
-        <h3 className="text-lg font-bold mb-4">Add New User</h3>
+      <div className="mb-6 rounded-lg bg-white p-6 shadow">
+        <h3 className="mb-4 text-lg font-bold">Add New User</h3>
 
         <form onSubmit={handleSubmit}>
           <input
@@ -76,126 +78,83 @@ const UserManagement = () => {
             placeholder="Name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full p-2 border rounded mb-3"
+            className="mb-3 w-full rounded border p-2"
+            required
           />
-
           <input
             type="email"
             name="email"
             placeholder="Email"
             value={formData.email}
             onChange={handleChange}
-            className="w-full p-2 border rounded mb-3"
+            className="mb-3 w-full rounded border p-2"
+            required
           />
-
           <input
             type="password"
             name="password"
             placeholder="Password"
             value={formData.password}
             onChange={handleChange}
-            className="w-full p-2 border rounded mb-3"
+            className="mb-3 w-full rounded border p-2"
+            required
+            minLength={6}
           />
-
           <select
             name="role"
             value={formData.role}
             onChange={handleChange}
-            className="w-full p-2 border rounded mb-3"
+            className="mb-3 w-full rounded border p-2"
           >
-            <option value="Customer">Customer</option>
-            <option value="Admin">Admin</option>
+            <option value="user">Customer</option>
+            <option value="admin">Admin</option>
           </select>
-
-          <button className="bg-green-600 text-white px-4 py-2 rounded">
+          <button className="rounded bg-green-600 px-4 py-2 text-white">
             Add User
           </button>
         </form>
       </div>
 
-      {/* Table */}
-      <div className="bg-white shadow p-6 rounded-lg">
-        <h3 className="text-lg font-bold mb-4">Users List</h3>
-
+      <div className="rounded-lg bg-white p-6 shadow">
+        <h3 className="mb-4 text-lg font-bold">Users List</h3>
         <table className="w-full border">
           <thead>
             <tr className="bg-gray-100">
-              <th className="p-2 border">Name</th>
-              <th className="p-2 border">Email</th>
-              <th className="p-2 border">Role</th>
-              <th className="p-2 border">Action</th>
+              <th className="border p-2">Name</th>
+              <th className="border p-2">Email</th>
+              <th className="border p-2">Role</th>
+              <th className="border p-2">Action</th>
             </tr>
           </thead>
-
           <tbody>
-            {users.length > 0 ? (
-              users.map((user, index) => (
-                <tr key={index} className="text-center">
-                  <td className="p-2 border">{user.name}</td>
-                  <td className="p-2 border">{user.email}</td>
-
-                  <td className="p-2 border">
-                    <select
-                      value={user.role}
-                      onChange={(e) => {
-                        const updatedUsers = [...users];
-                        updatedUsers[index].role = e.target.value;
-                        setUsers(updatedUsers);
-                      }}
-                      className="border p-1 rounded"
-                    >
-                      <option value="Customer">Customer</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                  </td>
-
-                  <td className="p-2 border">
-                    <button
-                      onClick={() => handleDeleteClick(index)}
-                      className="bg-red-500 text-white px-3 py-1 rounded"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={4} className="text-center py-3 text-gray-500">
-                  No users found
+            {users.map((user) => (
+              <tr key={user.id} className="text-center">
+                <td className="border p-2">{user.name}</td>
+                <td className="border p-2">{user.email}</td>
+                <td className="border p-2">
+                  <select
+                    value={user.role}
+                    onChange={(event) => handleRoleChange(user, event.target.value)}
+                    className="rounded border p-1"
+                  >
+                    <option value="user">Customer</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </td>
+                <td className="border p-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(user)}
+                    className="rounded bg-red-500 px-3 py-1 text-white"
+                  >
+                    Delete
+                  </button>
                 </td>
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>
-
-      {/* Popup */}
-      {showPopup && (
-  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-40">
-    <div className="bg-white p-6 rounded-xl text-center w-80 shadow-lg animate-scaleIn">
-      <h3 className="text-lg font-semibold mb-4">
-        Are you sure you want to delete?
-      </h3>
-
-      <div className="flex justify-center gap-4">
-        <button
-          onClick={() => setShowPopup(false)}
-          className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={confirmDelete}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
     </div>
   );
 };

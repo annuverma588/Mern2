@@ -1,125 +1,117 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
-    HiOutlineUser , 
-    HiOutlineShoppingBag, 
-    HiBars3BottomRight,
+  HiBars3BottomRight,
+  HiOutlineHeart,
+  HiOutlineShoppingBag,
+  HiOutlineUser,
 } from "react-icons/hi2";
-import { IoMdClose } from "react-icons/io"; // ✅ FIX
-import SearchBar from './SearchBar';
-import CartDrawer from '../Layout/CartDrawer';
+import { IoMdClose } from "react-icons/io";
+import SearchBar from "./SearchBar";
+import CartDrawer from "../Layout/CartDrawer";
+import { useAuth } from "../../context/AuthContext";
 
 const Navbar = () => {
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [navDropdownOpen, setNavDropdownOpen] = useState(false);
+  const { isAdmin } = useAuth();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [navDropdownOpen, setNavDropdownOpen] = useState(false);
 
-    const toggleNavDropdown = () => {
-        setNavDropdownOpen(!navDropdownOpen);
-    };
+  const toggleNavDropdown = () => {
+    setNavDropdownOpen((open) => !open);
+  };
 
-    const toggleDrawer = () => {
-        setDrawerOpen(!drawerOpen);
-    };
+  const toggleDrawer = () => {
+    setDrawerOpen((open) => !open);
+  };
+
+  const links = [
+    { label: "Men", to: "/collections/all?gender=male" },
+    { label: "Women", to: "/collections/all?gender=female" },
+    { label: "Top Wear", to: "/collections/all?category=Shirts" },
+    { label: "Bottom Wear", to: "/collections/all?category=Pants" },
+  ];
 
   return (
     <>
-      <nav className="container mx-auto flex items-center justify-between py-4 px-6">
-        
-        <div>
-          <Link to="/" className="text-2xl font-medium"> {/* ✅ FIX */}
-            Rabbit
-          </Link>
+      <nav className="container mx-auto flex items-center justify-between px-6 py-4">
+        <Link to="/" className="text-2xl font-medium">
+          Rabbit
+        </Link>
+
+        <div className="hidden space-x-6 md:flex">
+          {links.map((link) => (
+            <Link
+              key={link.label}
+              to={link.to}
+              className="text-sm font-medium uppercase text-gray-700 hover:text-black"
+            >
+              {link.label}
+            </Link>
+          ))}
         </div>
 
-        <div className='hidden md:flex space-x-6'>
-          <Link to="/collections/all" className="text-gray-700 hover:text-black text-sm font-medium uppercase">Men</Link>
-          <Link to="#" className="text-gray-700 hover:text-black text-sm font-medium uppercase">Women</Link>
-          <Link to="#" className="text-gray-700 hover:text-black text-sm font-medium uppercase">Top Wear</Link>
-          <Link to="#" className="text-gray-700 hover:text-black text-sm font-medium uppercase">Bottom Wear</Link>
-        </div>
+        <div className="flex items-center space-x-4">
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="rounded-lg border border-black px-4 py-2 text-sm font-medium text-black transition-all duration-300 hover:bg-black hover:text-white"
+            >
+              Admin
+            </Link>
+          )}
 
-        <div className='flex items-center space-x-4'>
-          <Link
-           to="/admin" 
-           className='block bg-black px-2 rounded text-sm text-white'
-          >
-            Admin</Link>
-  
-          <Link to="/profile" className="hover:text-black"> {/* ✅ FIX */}
-            <HiOutlineUser className='h-6 w-6 text-gray-700' />
+          <Link to="/profile" className="hover:text-black">
+            <HiOutlineUser className="h-6 w-6 text-gray-700" />
           </Link>
 
-          <button onClick={toggleDrawer} className="relative hover:text-black">
-            <HiOutlineShoppingBag className="h-6 w-6 text-gray-700"/>
-            
-            <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              4
-            </span>
+          <Link to="/wishlist" className="hover:text-black">
+            <HiOutlineHeart className="h-6 w-6 text-gray-700" />
+          </Link>
+
+          <button type="button" onClick={toggleDrawer} className="relative hover:text-black">
+            <HiOutlineShoppingBag className="h-6 w-6 text-gray-700" />
           </button>
 
-          <div className='overflow-hidden'>
-            <SearchBar/>
+          <div className="overflow-hidden">
+            <SearchBar />
           </div>
 
-          <button onClick={toggleNavDropdown} className="md:hidden">
-            <HiBars3BottomRight className="h-6 w-6 text-gray-700"/>
+          <button type="button" onClick={toggleNavDropdown} className="md:hidden">
+            <HiBars3BottomRight className="h-6 w-6 text-gray-700" />
           </button>
         </div>
       </nav>
 
-      <CartDrawer 
-        drawerOpen={drawerOpen} 
-        toggleCartDrawer={toggleDrawer} 
-      />
+      <CartDrawer drawerOpen={drawerOpen} toggleCartDrawer={toggleDrawer} />
 
-      {/* Mobile Dropdown */}
-      <div className={`fixed top-0 left-0 w-3/4 sm:w-1/3 h-full bg-white shadow-lg transform
-        transition-transform duration-300 ${
-            navDropdownOpen ? 'translate-x-0' : '-translate-x-full'
+      <div
+        className={`fixed left-0 top-0 h-full w-3/4 transform bg-white shadow-lg transition-transform duration-300 sm:w-1/3 ${
+          navDropdownOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-          <div className='flex justify-end p-4'>
-            <button onClick={toggleNavDropdown}>
-              <IoMdClose className='h-6 w-6 text-gray-600'/>
-            </button>
-          </div>
-          <div className='p-4'>
-            <h2 className='text-xl font-semibold mb-4'>Menu</h2>
-            <nav className='space-y-4'>
-              <Link 
-              to="#" 
-              onClick={toggleNavDropdown} 
-              className='block text-gray-600 hover:text-black'
+        <div className="flex justify-end p-4">
+          <button type="button" onClick={toggleNavDropdown}>
+            <IoMdClose className="h-6 w-6 text-gray-600" />
+          </button>
+        </div>
+        <div className="p-4">
+          <h2 className="mb-4 text-xl font-semibold">Menu</h2>
+          <nav className="space-y-4">
+            {links.map((link) => (
+              <Link
+                key={link.label}
+                to={link.to}
+                onClick={toggleNavDropdown}
+                className="block text-gray-600 hover:text-black"
               >
-                Men
+                {link.label}
               </Link>
-              <Link 
-              to="#" 
-              onClick={toggleNavDropdown} 
-              className='block text-gray-600 hover:text-black'
-              >
-                Women
-              </Link>
-              <Link 
-              to="#" 
-              onClick={toggleNavDropdown} 
-              className='block text-gray-600 hover:text-black'
-              >
-                Top Wear
-              </Link>
-              <Link 
-              to="#" 
-              onClick={toggleNavDropdown} 
-              className='block text-gray-600 hover:text-black'
-              >
-                Bottom Wear
-              </Link>
-            </nav>
-
-          </div>
+            ))}
+          </nav>
+        </div>
       </div>
     </>
-  )
-}
+  );
+};
 
 export default Navbar;
